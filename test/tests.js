@@ -32,6 +32,8 @@ describe("StakingPlatform", function () {
 
     // Transfer tokens to the user for testing
     await token.transfer(user.address, depositAmount);
+    // Transfer tokens to the staking platform for reward distribution
+    await token.transfer(stakingPlatform.address, depositAmount);
   });
 
   describe("Deployment", function () {
@@ -96,7 +98,6 @@ describe("StakingPlatform", function () {
         initialContractBalance.add(depositAmount)
       );
     });
-    // Implement tests for startStaking, claimRewards, withdraw, etc.
 
     it("Should allow the owner to start staking", async function () {
       // Owner starts the staking period
@@ -126,17 +127,18 @@ describe("StakingPlatform", function () {
       await stakingPlatform.connect(deployer).startStaking();
 
       // Simulate time passing to accumulate rewards
-      const timeToPass = 60 * 60 * 24 * 30; // 30 days in seconds
+      const timeToPass = lockDurationInDays * 24 * 60 * 60;
       await ethers.provider.send("evm_increaseTime", [timeToPass]);
       await ethers.provider.send("evm_mine"); // This command forces the EVM to mine another block
-
+      const startPeriod = await stakingPlatform.startPeriod();
+      const endPeriod = await stakingPlatform.endPeriod();
       // Calculate expected rewards
       // This is a simplified version; your actual calculation will depend on your contract's logic
       const expectedRewards = depositAmount
         .mul(fixedAPY)
         .div(100)
         .mul(timeToPass)
-        .div(365 * 24 * 60 * 60);
+        .div(endPeriod - startPeriod);
 
       // User claims rewards
       await stakingPlatform.connect(user).claimRewards();
@@ -146,9 +148,8 @@ describe("StakingPlatform", function () {
       // Assuming the user had no other token transactions, the final balance should be the initial deposit minus the stake, plus the rewards
       // Since this test does not account for the exact reward mechanism or token transfers, replace `initialUserBalance` and `depositAmount`
       // with the correct logic for your test setup.
-      expect(finalUserBalance).to.be.closeTo(
-        initialUserBalance.sub(depositAmount).add(expectedRewards),
-        finalUserBalance
+      expect(finalUserBalance).to.be.equal(
+        initialUserBalance.sub(depositAmount).add(expectedRewards)
       );
 
       // Check if the rewardsToClaim for the user is reset to 0
@@ -156,6 +157,4 @@ describe("StakingPlatform", function () {
       expect(rewardsAfterClaim).to.equal(0);
     });
   });
-
-  // Add more tests for edge cases and other functionalities
 });
