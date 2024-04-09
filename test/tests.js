@@ -247,7 +247,7 @@ describe("StakingPlatform", function () {
     });
   });
 
-  describe("Edge cases", () => {
+  describe("Paused state", () => {
     it("Should not allow staking when paused", async () => {
       await stakingPlatform.connect(deployer).pause();
       await expect(
@@ -290,6 +290,17 @@ describe("StakingPlatform", function () {
         stakingPlatform.connect(deployer).setMaxStakingPerUser(depositAmount)
       ).to.be.revertedWith("Pausable: paused");
     });
+  });
 
+  describe("Deposit limit", () => {
+    it("Should not allow users to deposit more than the max staking per user", async () => {
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await expect(
+        stakingPlatform.connect(user).deposit(depositAmount)
+      ).to.be.revertedWith("Deposit amount exceeds the maximum staking limit");
+    });
   });
 });
