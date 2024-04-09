@@ -5,12 +5,13 @@ import "./IStakingPlatform.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "hardhat/console.sol";
 
 /// @author RetreebInc
 /// @title Staking Platform with fixed APY and lockup
-contract StakingPlatform is IStakingPlatform, Ownable {
+contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable token;
@@ -58,7 +59,7 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * set `lockupPeriod` which is `block.timestamp` + `lockupDuration`
      * and `endPeriod` which is `startPeriod` + `stakingDuration`
      */
-    function startStaking() external override onlyOwner {
+    function startStaking() external override onlyOwner whenNotPaused {
         require(startPeriod == 0, "Staking has already started");
         startPeriod = block.timestamp;
         lockupPeriod = block.timestamp + lockupDuration;
@@ -76,7 +77,7 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * @dev `totalStaked + amount` must be less than `stakingMax`
      * @dev that the amount deposited should greater than 0
      */
-    function deposit(uint amount) external override {
+    function deposit(uint amount) external override whenNotPaused {
         require(
             endPeriod == 0 || endPeriod > block.timestamp,
             "Staking period ended"
@@ -112,7 +113,7 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * withdraw reset all states variable for the `msg.sender` to 0, and claim rewards
      * if rewards to claim
      */
-    function withdraw(uint amount) external override {
+    function withdraw(uint amount) external override whenNotPaused {
         require(
             (block.timestamp - _userStartTime[_msgSender()]) >= lockupDuration,
             "No withdraw until lockup ends"
@@ -140,7 +141,7 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * withdraw reset all states variable for the `msg.sender` to 0, and claim rewards
      * if rewards to claim
      */
-    function withdrawAll() external override {
+    function withdrawAll() external override whenNotPaused {
         require(
             (block.timestamp - _userStartTime[_msgSender()]) >= lockupDuration,
             "No withdraw until lockup ends"
@@ -167,7 +168,7 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * @dev Can only be called one year after the end of the staking period
      * Cannot claim initial stakeholders deposit
      */
-    function withdrawResidualBalance() external onlyOwner {
+    function withdrawResidualBalance() external onlyOwner whenNotPaused {
         require(
             block.timestamp >= endPeriod + (365 * 1 days),
             "Withdraw 1year after endPeriod"
@@ -216,7 +217,7 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * @notice function that claims pending rewards
      * @dev transfer the pending rewards to the `msg.sender`
      */
-    function claimRewards() external override {
+    function claimRewards() external override whenNotPaused {
         _claimRewards();
     }
 
@@ -296,7 +297,7 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * @notice function that allows the owner to change the max amount staked per user
      * @param _maxAmountStaked, the new max amount staked per user
      */
-    function setMaxStakingPerUser(uint _maxAmountStaked) external onlyOwner {
+    function setMaxStakingPerUser(uint _maxAmountStaked) external onlyOwner whenNotPaused {
         maxStakingPerUser = _maxAmountStaked;
     }
 
@@ -304,7 +305,7 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * @notice function that allows the owner to change the max amount staked
      * @param _stakingMax, the new max amount staked
      */
-    function setStakingMax(uint _stakingMax) external onlyOwner {
+    function setStakingMax(uint _stakingMax) external onlyOwner whenNotPaused {
         stakingMax = _stakingMax;
     }
 
@@ -312,7 +313,23 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * @notice function that allows the owner to change the lockup duration
      * @param _lockupDurationInDays, the new lockup duration in days
      */
-    function setLockupDuration(uint _lockupDurationInDays) external onlyOwner {
+    function setLockupDuration(uint _lockupDurationInDays) external onlyOwner whenNotPaused {
         lockupDuration = _lockupDurationInDays * 1 days;
+    }
+
+    /**
+     * @dev pause the contract
+     * @dev only the owner can pause the contract
+     */
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev unpause the contract
+     * @dev only the owner can unpause the contract
+     */
+    function unpause() public onlyOwner {
+        _unpause();
     }
 }

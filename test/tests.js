@@ -234,5 +234,62 @@ describe("StakingPlatform", function () {
         newLockupDuration * 24 * 60 * 60
       );
     });
+
+    it("pause the contract", async () => {
+      await stakingPlatform.connect(deployer).pause();
+      expect(await stakingPlatform.paused()).to.be.true;
+    });
+
+    it("unpause the contract", async () => {
+      await stakingPlatform.connect(deployer).pause();
+      await stakingPlatform.connect(deployer).unpause();
+      expect(await stakingPlatform.paused()).to.be.false;
+    });
+  });
+
+  describe("Edge cases", () => {
+    it("Should not allow staking when paused", async () => {
+      await stakingPlatform.connect(deployer).pause();
+      await expect(
+        stakingPlatform.connect(user).deposit(depositAmount)
+      ).to.be.revertedWith("Pausable: paused");
+    });
+
+    it("Should not allow withdrawing when paused", async () => {
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+
+      await stakingPlatform.connect(deployer).pause();
+      await expect(
+        stakingPlatform.connect(user).withdraw(depositAmount)
+      ).to.be.revertedWith("Pausable: paused");
+    });
+
+    it("Should not allow claiming rewards when paused", async () => {
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+
+      await stakingPlatform.connect(deployer).startStaking();
+
+      await stakingPlatform.connect(deployer).pause();
+      await expect(
+        stakingPlatform.connect(user).claimRewards()
+      ).to.be.revertedWith("Pausable: paused");
+    });
+
+    it("Should not allow the owner to start staking when paused", async () => {
+      await stakingPlatform.connect(deployer).pause();
+      await expect(
+        stakingPlatform.connect(deployer).startStaking()
+      ).to.be.revertedWith("Pausable: paused");
+    });
+
+    it("Should not allow the owner to change parameters when paused", async () => {
+      await stakingPlatform.connect(deployer).pause();
+      await expect(
+        stakingPlatform.connect(deployer).setMaxStakingPerUser(depositAmount)
+      ).to.be.revertedWith("Pausable: paused");
+    });
+
   });
 });
