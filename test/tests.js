@@ -9,7 +9,7 @@ describe("StakingPlatform", function () {
   const fixedAPY = 10; // 10% APY
   const durationInDays = 30;
   const lockDurationInDays = 15;
-  const maxAmountStaked = ethers.utils.parseEther("5000");
+  const maxAmountStaked = ethers.utils.parseEther(20_000_000 + "");
 
   beforeEach(async function () {
     [deployer, user] = await ethers.getSigners();
@@ -155,6 +155,84 @@ describe("StakingPlatform", function () {
       // Check if the rewardsToClaim for the user is reset to 0
       const rewardsAfterClaim = await stakingPlatform.rewardOf(user.address);
       expect(rewardsAfterClaim).to.equal(0);
+    });
+  });
+
+  describe("Withdraw:", () => {
+    it("Should allow users to withdraw their stake after the lockup period ends", async function () {
+      // User deposits tokens
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+
+      // Start staking period
+      await stakingPlatform.connect(deployer).startStaking();
+
+      // Simulate time passing beyond the lockup period
+      const timeToPass = lockDurationInDays * 24 * 60 * 60 + 1; // Lockup period plus one second
+      await ethers.provider.send("evm_increaseTime", [timeToPass]);
+      await ethers.provider.send("evm_mine");
+
+      // Record balances before withdrawal
+      const initialUserBalance = await token.balanceOf(user.address);
+      const initialContractBalance = await token.balanceOf(
+        stakingPlatform.address
+      );
+      const initialTotalStaked = await stakingPlatform.totalDeposited();
+
+      const rewardsToClaim = await stakingPlatform.rewardOf(user.address);
+
+      // User withdraws their stake
+      await stakingPlatform.connect(user).withdraw(depositAmount);
+
+      // Ensure user's token balance increased by the withdrawn amount
+      const finalUserBalance = await token.balanceOf(user.address);
+      expect(finalUserBalance).to.equal(
+        initialUserBalance.add(depositAmount).add(rewardsToClaim)
+      );
+
+      // Ensure the contract's token balance decreased by the withdrawn amount
+      const finalContractBalance = await token.balanceOf(
+        stakingPlatform.address
+      );
+      expect(finalContractBalance).to.equal(
+        initialContractBalance.sub(depositAmount).sub(rewardsToClaim)
+      );
+
+      // Verify the total staked amount on the contract is updated correctly
+      const finalTotalStaked = await stakingPlatform.totalDeposited();
+      expect(finalTotalStaked).to.equal(initialTotalStaked.sub(depositAmount));
+
+      // Check that the user's staked amount is reset to 0
+      const userStakedAmount = await stakingPlatform.amountStaked(user.address);
+      expect(userStakedAmount).to.equal(0);
+    });
+  });
+
+  describe("Owner editing parameters", () => {
+    it("setMaxStakingPerUser", async () => {
+      const newMaxAmountStaked = ethers.utils.parseEther(30_000_000 + "");
+      await stakingPlatform
+        .connect(deployer)
+        .setMaxStakingPerUser(newMaxAmountStaked);
+      expect(await stakingPlatform.maxStakingPerUser()).to.equal(
+        newMaxAmountStaked
+      );
+    });
+
+    it("setStakingMax", async () => {
+      const newMaxAmountStaked = ethers.utils.parseEther(30_000_000 + "");
+      await stakingPlatform.connect(deployer).setStakingMax(newMaxAmountStaked);
+      expect(await stakingPlatform.stakingMax()).to.equal(newMaxAmountStaked);
+    });
+
+    it("setLockupDuration", async () => {
+      const newLockupDuration = 20;
+      await stakingPlatform
+        .connect(deployer)
+        .setLockupDuration(newLockupDuration);
+      expect(await stakingPlatform.lockupDuration()).to.equal(
+        newLockupDuration * 24 * 60 * 60
+      );
     });
   });
 });

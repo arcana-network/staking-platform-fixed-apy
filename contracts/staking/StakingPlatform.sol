@@ -18,8 +18,9 @@ contract StakingPlatform is IStakingPlatform, Ownable {
     uint8 public immutable fixedAPY;
 
     uint public immutable stakingDuration;
-    uint public immutable lockupDuration;
-    uint public immutable stakingMax;
+    uint public lockupDuration;
+    uint public stakingMax;
+    uint public maxStakingPerUser;
 
     uint public startPeriod;
     uint public lockupPeriod;
@@ -48,6 +49,7 @@ contract StakingPlatform is IStakingPlatform, Ownable {
         token = IERC20(_token);
         fixedAPY = _fixedAPY;
         stakingMax = _maxAmountStaked;
+        maxStakingPerUser = 250_000 * 1E18;
     }
 
     /**
@@ -84,6 +86,10 @@ contract StakingPlatform is IStakingPlatform, Ownable {
             "Amount staked exceeds MaxStake"
         );
         require(amount > 0, "Amount must be greater than 0");
+        require(
+            staked[_msgSender()] + amount <= maxStakingPerUser,
+            "Amount staked exceeds MaxStakePerUser"
+        );
 
         if (_userStartTime[_msgSender()] == 0) {
             _userStartTime[_msgSender()] = block.timestamp;
@@ -284,5 +290,29 @@ contract StakingPlatform is IStakingPlatform, Ownable {
         _userStartTime[_msgSender()] = (block.timestamp >= endPeriod)
             ? endPeriod
             : block.timestamp;
+    }
+
+    /**
+     * @notice function that allows the owner to change the max amount staked per user
+     * @param _maxAmountStaked, the new max amount staked per user
+     */
+    function setMaxStakingPerUser(uint _maxAmountStaked) external onlyOwner {
+        maxStakingPerUser = _maxAmountStaked;
+    }
+
+    /**
+     * @notice function that allows the owner to change the max amount staked
+     * @param _stakingMax, the new max amount staked
+     */
+    function setStakingMax(uint _stakingMax) external onlyOwner {
+        stakingMax = _stakingMax;
+    }
+
+    /**
+     * @notice function that allows the owner to change the lockup duration
+     * @param _lockupDurationInDays, the new lockup duration in days
+     */
+    function setLockupDuration(uint _lockupDurationInDays) external onlyOwner {
+        lockupDuration = _lockupDurationInDays * 1 days;
     }
 }
