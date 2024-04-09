@@ -224,7 +224,7 @@ describe("StakingPlatform - Quick Pool - withdrawal with amount", () => {
   it("Should fail deposit tokens", async () => {
     await token.approve(stakingPlatform.address, n18("9000"));
     await expect(stakingPlatform.deposit(n18("100000"))).to.revertedWith(
-      "ERC20: transfer amount exceeds allowance"
+      "ERC20: insufficient allowance"
     );
   });
 

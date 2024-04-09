@@ -329,7 +329,7 @@ describe("StakingPlatform - Deep Pool", () => {
   it("Should fail deposit tokens", async () => {
     await token.approve(stakingPlatform.address, 0);
     await expect(stakingPlatform.deposit(n18("100000"))).to.revertedWith(
-      "ERC20: transfer amount exceeds allowance"
+      "ERC20: insufficient allowance"
     );
   });
 
