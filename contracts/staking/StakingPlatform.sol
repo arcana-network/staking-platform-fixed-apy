@@ -9,6 +9,9 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "hardhat/console.sol";
 
+// TODO: set per user, and total staked amount to max uint256
+// TODO: take deposit only if (block.timestamp + stakingDuration < endPeriod)
+
 /// @author RetreebInc
 /// @title Staking Platform with fixed APY and lockup
 contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
@@ -50,7 +53,7 @@ contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
         token = IERC20(_token);
         fixedAPY = _fixedAPY;
         stakingMax = _maxAmountStaked;
-        maxStakingPerUser = 250_000 * 1E18;
+        maxStakingPerUser = uint256(2 ** 256 - 1);
     }
 
     /**
@@ -170,7 +173,7 @@ contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
      */
     function withdrawResidualBalance() external onlyOwner whenNotPaused {
         require(
-            block.timestamp >= endPeriod + (365 * 1 days),
+            block.timestamp >= endPeriod + (90 * 1 days),
             "Withdraw 1year after endPeriod"
         );
 
@@ -297,7 +300,9 @@ contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
      * @notice function that allows the owner to change the max amount staked per user
      * @param _maxAmountStaked, the new max amount staked per user
      */
-    function setMaxStakingPerUser(uint _maxAmountStaked) external onlyOwner whenNotPaused {
+    function setMaxStakingPerUser(
+        uint _maxAmountStaked
+    ) external onlyOwner whenNotPaused {
         maxStakingPerUser = _maxAmountStaked;
     }
 
@@ -313,7 +318,9 @@ contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
      * @notice function that allows the owner to change the lockup duration
      * @param _lockupDurationInDays, the new lockup duration in days
      */
-    function setLockupDuration(uint _lockupDurationInDays) external onlyOwner whenNotPaused {
+    function setLockupDuration(
+        uint _lockupDurationInDays
+    ) external onlyOwner whenNotPaused {
         lockupDuration = _lockupDurationInDays * 1 days;
     }
 

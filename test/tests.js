@@ -9,7 +9,7 @@ describe("StakingPlatform", function () {
   const fixedAPY = 10; // 10% APY
   const durationInDays = 30;
   const lockDurationInDays = 15;
-  const maxAmountStaked = ethers.utils.parseEther(20_000_000 + "");
+  const maxAmountStaked = ethers.constants.MaxUint256;
 
   beforeEach(async function () {
     [deployer, user] = await ethers.getSigners();
@@ -294,13 +294,25 @@ describe("StakingPlatform", function () {
 
   describe("Deposit limit", () => {
     it("Should not allow users to deposit more than the max staking per user", async () => {
-      await token.connect(user).approve(stakingPlatform.address, depositAmount);
-      await stakingPlatform.connect(user).deposit(depositAmount);
+      // lower the max staking per user to avoid the deposit amount exceeding the limit
+      await stakingPlatform
+        .connect(deployer)
+        .setMaxStakingPerUser(depositAmount);
+      const invalidAmount = (await stakingPlatform.maxStakingPerUser()).add(1); // Deposit amount exceeds the max staking per user
+      await token.approve(stakingPlatform.address, invalidAmount);
+      await expect(stakingPlatform.deposit(invalidAmount)).to.be.revertedWith(
+        "Amount staked exceeds MaxStakePerUser"
+      );
+    });
 
-      await token.connect(user).approve(stakingPlatform.address, depositAmount);
-      await expect(
-        stakingPlatform.connect(user).deposit(depositAmount)
-      ).to.be.revertedWith("Deposit amount exceeds the maximum staking limit");
+    it("Should not allow users to deposit more than the staking max", async () => {
+      // lower the staking max to avoid the deposit amount exceeding the limit
+      await stakingPlatform.connect(deployer).setStakingMax(depositAmount);
+      const invalidAmount = (await stakingPlatform.stakingMax()).add(1); // Deposit amount exceeds the staking max
+      await token.approve(stakingPlatform.address, invalidAmount);
+      await expect(stakingPlatform.deposit(invalidAmount)).to.be.revertedWith(
+        "Amount staked exceeds MaxStake"
+      );
     });
   });
 });
