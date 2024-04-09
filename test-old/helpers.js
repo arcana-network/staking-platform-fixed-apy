@@ -13,6 +13,7 @@ async function increaseTime(duration) {
   await ethers.provider.send("evm_mine");
 }
 
+
 async function claimAndStake(account, token, stakingPlatform) {
   await ethers.provider.send("evm_setAutomine", [false]);
   const accountAddress = account.address;

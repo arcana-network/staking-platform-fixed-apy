@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "hardhat/console.sol";
+
 /// @author RetreebInc
 /// @title Staking Platform with fixed APY and lockup
 contract StakingPlatform is IStakingPlatform, Ownable {
@@ -106,7 +108,7 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      */
     function withdraw(uint amount) external override {
         require(
-            block.timestamp >= lockupPeriod,
+            (block.timestamp - _userStartTime[_msgSender()]) >= lockupDuration,
             "No withdraw until lockup ends"
         );
         require(amount > 0, "Amount must be greater than 0");
@@ -122,7 +124,6 @@ contract StakingPlatform is IStakingPlatform, Ownable {
         _totalStaked -= amount;
         staked[_msgSender()] -= amount;
         token.safeTransfer(_msgSender(), amount);
-
         emit Withdraw(_msgSender(), amount);
     }
 
@@ -135,7 +136,7 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      */
     function withdrawAll() external override {
         require(
-            block.timestamp >= lockupPeriod,
+            (block.timestamp - _userStartTime[_msgSender()]) >= lockupDuration,
             "No withdraw until lockup ends"
         );
 
@@ -178,12 +179,9 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * @param stakeHolder, address of the user to check
      * @return uint amount of the total deposited Tokens by the caller
      */
-    function amountStaked(address stakeHolder)
-        external
-        view
-        override
-        returns (uint)
-    {
+    function amountStaked(
+        address stakeHolder
+    ) external view override returns (uint) {
         return staked[stakeHolder];
     }
 
@@ -202,12 +200,9 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * @param stakeHolder, address of the user to be checked
      * @return uint amount of claimable rewards
      */
-    function rewardOf(address stakeHolder)
-        external
-        view
-        override
-        returns (uint)
-    {
+    function rewardOf(
+        address stakeHolder
+    ) external view override returns (uint) {
         return _calculateRewards(stakeHolder);
     }
 
@@ -225,11 +220,9 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * @param stakeHolder, address of the user to be checked
      * @return uint amount of claimable tokens of the specified address
      */
-    function _calculateRewards(address stakeHolder)
-        internal
-        view
-        returns (uint)
-    {
+    function _calculateRewards(
+        address stakeHolder
+    ) internal view returns (uint) {
         if (startPeriod == 0 || staked[stakeHolder] == 0) {
             return 0;
         }
@@ -246,11 +239,9 @@ contract StakingPlatform is IStakingPlatform, Ownable {
      * @param stakeHolder, address of the user to be checked
      * @return uint percentage of time remaining * precision
      */
-    function _percentageTimeRemaining(address stakeHolder)
-        internal
-        view
-        returns (uint)
-    {
+    function _percentageTimeRemaining(
+        address stakeHolder
+    ) internal view returns (uint) {
         bool early = startPeriod > _userStartTime[stakeHolder];
         uint startTime;
         if (endPeriod > block.timestamp) {

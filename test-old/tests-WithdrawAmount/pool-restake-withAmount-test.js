@@ -1,7 +1,7 @@
 const { n18, increaseTime, UINT_MAX } = require("../helpers");
 const { expect } = require("chai");
 
-describe("StakingPlatform - Restake - withdrawal with amount", () => {
+describe.only("StakingPlatform - Restake - withdrawal with amount", () => {
   let token;
   let stakingPlatform;
   let accounts;
@@ -650,16 +650,18 @@ describe("StakingPlatform - Restake - withdrawal with amount", () => {
       expect(
         (await stakingPlatform.calculatedReward(addresses[0])).toString()
       ).to.equal("0");
-
+      console.log(1);
+      await increaseTime(100 * 60 * 60 * 24);
       await stakingPlatform.withdraw(
         await stakingPlatform.amountStaked(addresses[0])
       );
+      console.log(2);
       await stakingPlatform.deposit(n18("1000000"));
       expect(
         (await stakingPlatform.calculatedReward(addresses[0])).toString()
       ).to.equal("0");
     }
-
+    console.log("token", token);
     const balanceAfter = await token.balanceOf(addresses[0]);
 
     expect(balanceBefore).to.equal(balanceAfter);
