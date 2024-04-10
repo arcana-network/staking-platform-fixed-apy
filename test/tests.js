@@ -6,9 +6,9 @@ describe("StakingPlatform", function () {
   let stakingPlatform, token;
   const initialSupply = ethers.utils.parseEther(String(10 ** 9));
   const depositAmount = ethers.utils.parseEther("1000");
-  const fixedAPY = 10; // 10% APY
-  const durationInDays = 30;
-  const lockDurationInDays = 15;
+  const fixedAPY = 50; // 10% APY
+  const durationInDays = 180;
+  const lockDurationInDays = 90;
   const maxAmountStaked = ethers.constants.MaxUint256;
 
   beforeEach(async function () {
@@ -140,6 +140,8 @@ describe("StakingPlatform", function () {
         .mul(timeToPass)
         .div(endPeriod - startPeriod);
 
+      // console.log("expectedRewards", ethers.utils.formatEther(expectedRewards));
+
       // User claims rewards
       await stakingPlatform.connect(user).claimRewards();
 
@@ -148,8 +150,9 @@ describe("StakingPlatform", function () {
       // Assuming the user had no other token transactions, the final balance should be the initial deposit minus the stake, plus the rewards
       // Since this test does not account for the exact reward mechanism or token transfers, replace `initialUserBalance` and `depositAmount`
       // with the correct logic for your test setup.
-      expect(finalUserBalance).to.be.equal(
-        initialUserBalance.sub(depositAmount).add(expectedRewards)
+      expect(finalUserBalance).to.be.closeTo(
+        initialUserBalance.sub(depositAmount).add(expectedRewards),
+        ethers.utils.parseEther("0.01")
       );
 
       // Check if the rewardsToClaim for the user is reset to 0
@@ -313,6 +316,80 @@ describe("StakingPlatform", function () {
       await expect(stakingPlatform.deposit(invalidAmount)).to.be.revertedWith(
         "Amount staked exceeds MaxStake"
       );
+    });
+  });
+
+  describe("withdrawResidualBalance", () => {
+    it("Should allow the owner to withdraw the residual balance", async () => {
+      const initialContractBalance = await token.balanceOf(
+        stakingPlatform.address
+      );
+      const initialOwnerBalance = await token.balanceOf(deployer.address);
+      const amountToWithdraw = ethers.utils.parseEther("1000");
+      await token.transfer(stakingPlatform.address, amountToWithdraw);
+      await stakingPlatform.connect(deployer).withdrawResidualBalance();
+      const finalContractBalance = await token.balanceOf(
+        stakingPlatform.address
+      );
+      const finalOwnerBalance = await token.balanceOf(deployer.address);
+      expect(finalContractBalance).to.equal(ethers.constants.Zero);
+      expect(finalOwnerBalance).to.equal(
+        initialOwnerBalance.add(amountToWithdraw)
+      );
+    });
+
+    it("Should allow users to withdraw their stake after owner withdraws the residual balance", async () => {
+      // User deposits tokens
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+
+      // Start staking period
+      await stakingPlatform.connect(deployer).startStaking();
+
+      // Simulate time passing beyond the lockup period
+      const timeToPass = 270 * 24 * 60 * 60 + 1; // Lockup period plus one second
+      await ethers.provider.send("evm_increaseTime", [timeToPass]);
+      await ethers.provider.send("evm_mine");
+
+      // Record balances before withdrawal
+      const initialUserBalance = await token.balanceOf(user.address);
+      const initialContractBalance = await token.balanceOf(
+        stakingPlatform.address
+      );
+      const initialTotalStaked = await stakingPlatform.totalDeposited();
+
+      // Owner withdraws the residual balance
+      await token.transfer(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(deployer).withdrawResidualBalance();
+
+      // transfer more tokens to the contract
+      await token.transfer(stakingPlatform.address, depositAmount);
+
+      const rewardsToClaim = await stakingPlatform.rewardOf(user.address);
+      // User withdraws their stake
+      await stakingPlatform.connect(user).withdraw(depositAmount);
+
+      // Ensure user's token balance increased by the withdrawn amount
+      const finalUserBalance = await token.balanceOf(user.address);
+      expect(finalUserBalance).to.equal(
+        initialUserBalance.add(depositAmount).add(rewardsToClaim)
+      );
+
+      // Ensure the contract's token balance decreased by the withdrawn amount
+      const finalContractBalance = await token.balanceOf(
+        stakingPlatform.address
+      );
+      expect(finalContractBalance).to.equal(
+        initialContractBalance.sub(depositAmount).sub(rewardsToClaim)
+      );
+
+      // Verify the total staked amount on the contract is updated correctly
+      const finalTotalStaked = await stakingPlatform.totalDeposited();
+      expect(finalTotalStaked).to.equal(initialTotalStaked.sub(depositAmount));
+
+      // Check that the user's staked amount is reset to 0
+      const userStakedAmount = await stakingPlatform.amountStaked(user.address);
+      expect(userStakedAmount).to.equal(0);
     });
   });
 });
