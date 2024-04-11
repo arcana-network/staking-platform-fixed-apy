@@ -336,4 +336,11 @@ contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
     function unpause() public onlyOwner {
         _unpause();
     }
+
+    /**
+     * @dev function to get startTime of the user
+     */
+    function getUserStartTime(address user) external view returns (uint) {
+        return _userStartTime[user];
+    }
 }

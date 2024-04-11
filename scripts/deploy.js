@@ -15,9 +15,9 @@ async function main() {
   await hre.run("compile");
 
   const TOKEN_ADDRESS = "0xa9A146E56c57A89D3C1FC631Acb2D149c5DD0030";
-  const STAKING_PLATFORM_DEEP = "0x3c353c3574b6FDc187b3834473711D308C3dBAE2";
-  const STAKING_PLATFORM_MID = "0xA297343b0F0F75D2ce89C5C898Fb913C8195D405";
-  const STAKING_PLATFORM_QUICK = "0x78CEaC3E8cDfb636BE196A4773Ca97e9496CC841";
+  const STAKING_PLATFORM_DEEP = "0x74fc2F19a160793311829478cf099fDD1Da4AeD7";
+  const STAKING_PLATFORM_MID = "0x97c618295A7aF72A5eEEf2BC4d779cc4788EDc5f";
+  const STAKING_PLATFORM_QUICK = "0xaAc18762ff673578532A5cB38eAe3AABF5b96569";
 
   const Token = await hre.ethers.getContractFactory("Token");
   const TOKEN_SUPPLY = n18("10000000000000000000");
@@ -33,7 +33,7 @@ async function main() {
   const STAKING_DURATION = 180;
   const LOCKING_DURATION_DEEP = 90;
   const LOCKING_DURATION_MID = 60;
-  const LOCKING_DURATION_QUICK = 30;
+  const LOCKING_DURATION_QUICK = 0;
   const DAYS_IN_YEAR = 360;
 
   // This calculated on early basis
@@ -127,7 +127,6 @@ async function main() {
       LOCKING_DURATION_DEEP,
       hre.ethers.constants.MaxUint256,
     ],
-    // contract: "contracts/staking/StakingPlatform:StakingPlatform",
   });
   await hre.run("verify:verify", {
     address: midPool.address,
