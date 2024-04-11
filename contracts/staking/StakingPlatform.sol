@@ -7,8 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
-// TODO: take deposit only if (block.timestamp + stakingDuration < endPeriod)
-
 /// @author RetreebInc
 /// @title Staking Platform with fixed APY and lockup
 contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
@@ -115,7 +113,9 @@ contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
      */
     function withdraw(uint amount) external override whenNotPaused {
         require(
-            (block.timestamp - _userStartTime[_msgSender()]) >= lockupDuration,
+            block.timestamp > endPeriod ||
+                (block.timestamp - _userStartTime[_msgSender()]) >=
+                lockupDuration,
             "No withdraw until lockup ends"
         );
         require(amount > 0, "Amount must be greater than 0");
