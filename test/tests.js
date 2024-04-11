@@ -100,6 +100,18 @@ describe("StakingPlatform", function () {
       );
     });
 
+    it("Check startTime", async function () {
+      await stakingPlatform.startStaking();
+      // deposit
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      let tx = await stakingPlatform.connect(user).deposit(depositAmount);
+      let blockTimestamp = (await ethers.provider.getBlock(tx.blockNumber))
+        .timestamp;
+      expect(await stakingPlatform.getUserStartTime(user.address)).to.equal(
+        blockTimestamp
+      );
+    });
+
     it("Should allow the owner to start staking", async function () {
       // Owner starts the staking period
       await stakingPlatform.startStaking();
