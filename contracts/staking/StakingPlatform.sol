@@ -170,8 +170,8 @@ contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
      */
     function withdrawResidualBalance() external onlyOwner whenNotPaused {
         require(
-            block.timestamp >= endPeriod + (90 * 1 days),
-            "Withdraw 90 days after endPeriod"
+            block.timestamp >= endPeriod + (15 * 1 days),
+            "Withdraw 15 days after endPeriod"
         );
 
         uint balance = token.balanceOf(address(this));
