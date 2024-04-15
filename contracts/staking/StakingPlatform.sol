@@ -48,7 +48,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
         token = IERC20(_token);
         fixedAPY = _fixedAPY;
         stakingMax = _maxAmountStaked;
-        maxStakingPerUser = uint256(2 ** 256 - 1);
+        maxStakingPerUser = type(uint256).max;
     }
 
     /**
@@ -84,10 +84,10 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
             _totalStaked + amount <= stakingMax,
             "Amount staked exceeds MaxStake"
         );
-        require(amount > 0, "Amount must be greater than 0");
+        require(amount != 0, "Amount must be greater than 0");
         require(
             staked[_msgSender()] + amount <= maxStakingPerUser,
-            "Amount staked exceeds MaxStakePerUser"
+            "Stake exceeds user's limit"
         );
 
         if (_userStartTime[_msgSender()] == 0) {
@@ -118,14 +118,14 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
                 (block.timestamp - startTime) >= lockupDuration,
             "No withdraw until lockup ends"
         );
-        require(amount > 0, "Amount must be greater than 0");
+        require(amount != 0, "Amount must be greater than 0");
         require(
             amount <= staked[_msgSender()],
             "Amount higher than stakedAmount"
         );
 
         _updateRewards();
-        if (_rewardsToClaim[_msgSender()] > 0) {
+        if (_rewardsToClaim[_msgSender()] != 0) {
             _claimRewards();
         }
         _totalStaked -= amount;
@@ -149,7 +149,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
             "No withdraw until lockup ends"
         );
         _updateRewards();
-        if (_rewardsToClaim[_msgSender()] > 0) {
+        if (_rewardsToClaim[_msgSender()] != 0) {
             _claimRewards();
         }
 
@@ -177,7 +177,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
 
         uint balance = token.balanceOf(address(this));
         uint residualBalance = balance - (_totalStaked);
-        require(residualBalance > 0, "No residual Balance to withdraw");
+        require(residualBalance != 0, "No residual Balance to withdraw");
         token.safeTransfer(owner(), residualBalance);
     }
 
@@ -286,7 +286,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
         _updateRewards();
 
         uint rewardsToClaim = _rewardsToClaim[_msgSender()];
-        require(rewardsToClaim > 0, "Nothing to claim");
+        require(rewardsToClaim != 0, "Nothing to claim");
 
         _rewardsToClaim[_msgSender()] = 0;
         token.safeTransfer(_msgSender(), rewardsToClaim);

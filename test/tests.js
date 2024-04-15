@@ -368,7 +368,7 @@ describe("StakingPlatform", function () {
       const invalidAmount = (await stakingPlatform.maxStakingPerUser()).add(1); // Deposit amount exceeds the max staking per user
       await token.approve(stakingPlatform.address, invalidAmount);
       await expect(stakingPlatform.deposit(invalidAmount)).to.be.revertedWith(
-        "Amount staked exceeds MaxStakePerUser"
+        "Stake exceeds user's limit"
       );
     });
 
