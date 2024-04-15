@@ -341,7 +341,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
      * @dev pause the contract
      * @dev only the owner can pause the contract
      */
-    function pause() public onlyOwner {
+    function pause() external onlyOwner {
         _pause();
     }
 
@@ -349,7 +349,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
      * @dev unpause the contract
      * @dev only the owner can unpause the contract
      */
-    function unpause() public onlyOwner {
+    function unpause() external onlyOwner {
         _unpause();
     }
 
