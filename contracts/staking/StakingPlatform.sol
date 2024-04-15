@@ -166,7 +166,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
      * @notice claim all remaining balance on the contract
      * Residual balance is all the remaining tokens that have not been distributed
      * (e.g, in case the number of stakeholders is not sufficient)
-     * @dev Can only be called one year after the end of the staking period
+     * @dev Can only be called 15 days after the end of the staking period
      * Cannot claim initial stakeholders deposit
      */
     function withdrawResidualBalance() external onlyOwner whenNotPaused {
