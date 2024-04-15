@@ -97,7 +97,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
         _updateRewards();
 
         staked[_msgSender()] += amount;
-        _totalStaked += amount;
+        _totalStaked = _totalStaked + amount;
         token.safeTransferFrom(_msgSender(), address(this), amount);
         emit Deposit(_msgSender(), amount);
     }
@@ -128,7 +128,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
         if (_rewardsToClaim[_msgSender()] != 0) {
             _claimRewards();
         }
-        _totalStaked -= amount;
+        _totalStaked = _totalStaked - amount;
         staked[_msgSender()] -= amount;
         token.safeTransfer(_msgSender(), amount);
         emit Withdraw(_msgSender(), amount);
@@ -154,7 +154,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
         }
 
         _userStartTime[_msgSender()] = 0;
-        _totalStaked -= staked[_msgSender()];
+        _totalStaked = _totalStaked - staked[_msgSender()];
         uint stakedBalance = staked[_msgSender()];
         staked[_msgSender()] = 0;
         token.safeTransfer(_msgSender(), stakedBalance);
