@@ -457,4 +457,32 @@ describe("StakingPlatform", function () {
       expect(userStakedAmount).to.equal(0);
     });
   });
+
+  describe("Withdraw Bypass:", () => {
+    it("Should not bypasss the lockupDuration check and withdraw the amount after staking is started", async function () {
+      // User deposits tokens
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+      const blockTimestamp = (await ethers.provider.getBlock("latest"))
+        .timestamp;
+      // Start staking period
+      await stakingPlatform.connect(deployer).startStaking();
+      // Fast forward to 8 days
+      const timeToPass = 8 * 24 * 60 * 60;
+      await ethers.provider.send("evm_increaseTime", [timeToPass]);
+      await ethers.provider.send("evm_mine");
+      const blockTimestampAfter = (await ethers.provider.getBlock("latest"))
+        .timestamp;
+      // Record balances before withdrawal
+      const initialUserBalance = await token.balanceOf(user.address);
+      const rewardsToClaim = await stakingPlatform.rewardOf(user.address);
+      // User withdraws their stake
+      await expect(
+        stakingPlatform.connect(user).withdraw(depositAmount)
+      ).to.revertedWith("No withdraw until lockup ends");
+      // Ensure user's token balance increased by the withdrawn amount
+      const finalUserBalance = await token.balanceOf(user.address);
+      expect(finalUserBalance).to.equal(initialUserBalance);
+    });
+  });
 });

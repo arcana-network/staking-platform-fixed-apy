@@ -112,10 +112,10 @@ contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
      * if rewards to claim
      */
     function withdraw(uint amount) external override whenNotPaused {
+        uint startTime = _getStartTime(_msgSender());
         require(
             block.timestamp > endPeriod ||
-                (block.timestamp - _userStartTime[_msgSender()]) >=
-                lockupDuration,
+                (block.timestamp - startTime) >= lockupDuration,
             "No withdraw until lockup ends"
         );
         require(amount > 0, "Amount must be greater than 0");
@@ -142,11 +142,12 @@ contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
      * if rewards to claim
      */
     function withdrawAll() external override whenNotPaused {
+        uint startTime = _getStartTime(_msgSender());
         require(
-            (block.timestamp - _userStartTime[_msgSender()]) >= lockupDuration,
+            block.timestamp > endPeriod ||
+                (block.timestamp - startTime) >= lockupDuration,
             "No withdraw until lockup ends"
         );
-
         _updateRewards();
         if (_rewardsToClaim[_msgSender()] > 0) {
             _claimRewards();
@@ -241,6 +242,23 @@ contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
     }
 
     /**
+     * @notice function that returns the startPeriod of the staking
+     * @param stakeHolder address of the user to be checked
+     */
+    function _getStartTime(address stakeHolder) internal view returns (uint) {
+        bool early = startPeriod > _userStartTime[stakeHolder];
+        uint startTime;
+        if (endPeriod > block.timestamp) {
+            startTime = early ? startPeriod : _userStartTime[stakeHolder];
+            return startTime;
+        }
+        startTime = early
+            ? 0
+            : stakingDuration - (endPeriod - _userStartTime[stakeHolder]);
+        return startTime;
+    }
+
+    /**
      * @notice function that returns the remaining time in seconds of the staking period
      * @dev the higher is the precision and the more the time remaining will be precise
      * @param stakeHolder, address of the user to be checked
@@ -249,19 +267,14 @@ contract StakingPlatform is IStakingPlatform, Ownable, Pausable {
     function _percentageTimeRemaining(
         address stakeHolder
     ) internal view returns (uint) {
-        bool early = startPeriod > _userStartTime[stakeHolder];
-        uint startTime;
+        uint startTime = _getStartTime(stakeHolder);
         if (endPeriod > block.timestamp) {
-            startTime = early ? startPeriod : _userStartTime[stakeHolder];
             uint timeRemaining = stakingDuration -
                 (block.timestamp - startTime);
             return
                 (_precision * (stakingDuration - timeRemaining)) /
                 stakingDuration;
         }
-        startTime = early
-            ? 0
-            : stakingDuration - (endPeriod - _userStartTime[stakeHolder]);
         return (_precision * (stakingDuration - startTime)) / stakingDuration;
     }
 
