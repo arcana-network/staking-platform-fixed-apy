@@ -13,7 +13,7 @@ describe("StakingPlatform", function () {
   const maxAmountStaked = ethers.constants.MaxUint256;
 
   beforeEach(async function () {
-    [deployer, user] = await ethers.getSigners();
+    [deployer, user, user2] = await ethers.getSigners();
 
     // Deploy your ERC20 token and the StakingPlatform contracts here
     const Token = await ethers.getContractFactory("Token", deployer);
@@ -483,6 +483,25 @@ describe("StakingPlatform", function () {
       // Ensure user's token balance increased by the withdrawn amount
       const finalUserBalance = await token.balanceOf(user.address);
       expect(finalUserBalance).to.equal(initialUserBalance);
+    });
+  });
+
+  describe("Ownership features", function () {
+    it("should propose a new owner", async function () {
+      await stakingPlatform.transferOwnership(user.address);
+      expect(await stakingPlatform.pendingOwner()).to.equal(user.address);
+    });
+
+    it("should accept ownership by new owner", async function () {
+      await stakingPlatform.transferOwnership(user.address);
+      await stakingPlatform.connect(user).acceptOwnership();
+      expect(await stakingPlatform.owner()).to.equal(user.address);
+    });
+
+    it("should prevent non-proposed owners from accepting ownership", async function () {
+      await stakingPlatform.transferOwnership(user.address);
+      await expect(stakingPlatform.connect(user2).acceptOwnership()).to.be
+        .reverted;
     });
   });
 });
