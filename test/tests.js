@@ -32,7 +32,7 @@ describe("StakingPlatform", function () {
     );
 
     // Transfer tokens to the user for testing
-    await token.transfer(user.address, depositAmount);
+    await token.transfer(user.address, depositAmount.mul(3));
     // Transfer tokens to the staking platform for reward distribution
     await token.transfer(stakingPlatform.address, depositAmount);
   });
@@ -100,6 +100,113 @@ describe("StakingPlatform", function () {
       );
     });
 
+    it("Should allow users to deposit tokens twice", async function () {
+      await stakingPlatform.connect(deployer).startStaking();
+      // User approves and deposits tokens to the staking platform
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+
+      // Check if the user's startTime is updated correctly
+      const blockTimestamp = (await ethers.provider.getBlock("latest"))
+        .timestamp;
+
+      // Deposit again after 10 days
+      await ethers.provider.send("evm_increaseTime", [10 * 24 * 60 * 60]);
+      await ethers.provider.send("evm_mine");
+
+      // Record the initial total staked amount and user balance
+      const initialTotalStaked = await stakingPlatform.totalDeposited();
+      const initialUserBalance = await token.balanceOf(user.address);
+      const initialContractBalance = await token.balanceOf(
+        stakingPlatform.address
+      );
+
+      // User approves and deposits tokens to the staking platform
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+
+      // Check if the amount staked by the user is correct
+      expect(await stakingPlatform.amountStaked(user.address)).to.equal(
+        depositAmount.mul(2)
+      );
+
+      // Verify the total staked amount on the contract is updated correctly
+      expect(await stakingPlatform.totalDeposited()).to.equal(
+        initialTotalStaked.add(depositAmount)
+      );
+
+      // Ensure the user's token balance decreased by the deposit amount
+      expect(await token.balanceOf(user.address)).to.equal(
+        initialUserBalance.sub(depositAmount)
+      );
+
+      // Ensure the contract's token balance increased by the deposit amount
+      expect(await token.balanceOf(stakingPlatform.address)).to.equal(
+        initialContractBalance.add(depositAmount)
+      );
+
+      expect(
+        await stakingPlatform.getUserLockUpStartTime(user.address)
+      ).to.equal(blockTimestamp);
+    });
+
+    it("Should allow users to deposit tokens thrice", async function () {
+      await stakingPlatform.connect(deployer).startStaking();
+      // User approves and deposits tokens to the staking platform
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+
+      // Check if the user's startTime is updated correctly
+      const blockTimestamp = (await ethers.provider.getBlock("latest"))
+        .timestamp;
+
+      // Deposit again after 10 days
+      await ethers.provider.send("evm_increaseTime", [10 * 24 * 60 * 60]);
+      await ethers.provider.send("evm_mine");
+
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+
+      // Deposit again after 9 days
+      await ethers.provider.send("evm_increaseTime", [9 * 24 * 60 * 60]);
+      await ethers.provider.send("evm_mine");
+
+      // Record the initial total staked amount and user balance
+      const initialTotalStaked = await stakingPlatform.totalDeposited();
+      const initialUserBalance = await token.balanceOf(user.address);
+      const initialContractBalance = await token.balanceOf(
+        stakingPlatform.address
+      );
+
+      // User approves and deposits tokens to the staking platform
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+
+      // Check if the amount staked by the user is correct
+      expect(await stakingPlatform.amountStaked(user.address)).to.equal(
+        depositAmount.mul(3)
+      );
+
+      // Verify the total staked amount on the contract is updated correctly
+      expect(await stakingPlatform.totalDeposited()).to.equal(
+        initialTotalStaked.add(depositAmount)
+      );
+
+      // Ensure the user's token balance decreased by the deposit amount
+      expect(await token.balanceOf(user.address)).to.equal(
+        initialUserBalance.sub(depositAmount)
+      );
+
+      // Ensure the contract's token balance increased by the deposit amount
+      expect(await token.balanceOf(stakingPlatform.address)).to.equal(
+        initialContractBalance.add(depositAmount)
+      );
+
+      expect(
+        await stakingPlatform.getUserLockUpStartTime(user.address)
+      ).to.equal(blockTimestamp);
+    });
+
     it("Check startTime", async function () {
       await stakingPlatform.startStaking();
       // deposit
@@ -107,9 +214,9 @@ describe("StakingPlatform", function () {
       let tx = await stakingPlatform.connect(user).deposit(depositAmount);
       let blockTimestamp = (await ethers.provider.getBlock(tx.blockNumber))
         .timestamp;
-      expect(await stakingPlatform.getUserStartTime(user.address)).to.equal(
-        blockTimestamp
-      );
+      expect(
+        await stakingPlatform.getUserLockUpStartTime(user.address)
+      ).to.equal(blockTimestamp);
     });
 
     it("Should allow the owner to start staking", async function () {
@@ -272,6 +379,119 @@ describe("StakingPlatform", function () {
       // Check that the user's staked amount is reset to 0
       const userStakedAmount = await stakingPlatform.amountStaked(user.address);
       expect(userStakedAmount).to.equal(0);
+
+      expect(await stakingPlatform.rewardOf(user.address)).to.equal(0);
+
+      // check userLockUpStartTime
+      expect(
+        await stakingPlatform.getUserLockUpStartTime(user.address)
+      ).to.equal(ethers.constants.MaxUint256);
+    });
+
+    it("Withdraw partial stake", async function () {
+      // start staking
+      await stakingPlatform.connect(deployer).startStaking();
+      // deposit
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+
+      // record block timestamp
+      const blockTimestamp = (await ethers.provider.getBlock("latest"))
+        .timestamp;
+
+      // simulate time passing
+      let timeToPass = lockDurationInDays * 24 * 60 * 60;
+      await ethers.provider.send("evm_increaseTime", [timeToPass]);
+      await ethers.provider.send("evm_mine");
+      // record balances before withdrawal
+      const initialUserBalance = await token.balanceOf(user.address);
+      const initialContractBalance = await token.balanceOf(
+        stakingPlatform.address
+      );
+      const initialTotalStaked = await stakingPlatform.totalDeposited();
+      const rewardsToClaim = await stakingPlatform.rewardOf(user.address);
+
+      // withdraw partial stake
+      await stakingPlatform.connect(user).withdraw(depositAmount.div(2));
+
+      // ensure user's token balance increased by the withdrawn amount
+      const finalUserBalance = await token.balanceOf(user.address);
+      expect(finalUserBalance).to.equal(
+        initialUserBalance.add(depositAmount.div(2)).add(rewardsToClaim)
+      );
+
+      // ensure the contract's token balance decreased by the withdrawn amount
+      const finalContractBalance = await token.balanceOf(
+        stakingPlatform.address
+      );
+      expect(finalContractBalance).to.equal(
+        initialContractBalance.sub(depositAmount.div(2)).sub(rewardsToClaim)
+      );
+
+      // verify the total staked amount on the contract is updated correctly
+      const finalTotalStaked = await stakingPlatform.totalDeposited();
+      expect(finalTotalStaked).to.equal(
+        initialTotalStaked.sub(depositAmount.div(2))
+      );
+
+      // check that the user's staked amount is updated correctly
+      const userStakedAmount = await stakingPlatform.amountStaked(user.address);
+      expect(userStakedAmount).to.equal(depositAmount.div(2));
+
+      // userStartTime should not be updated
+      expect(
+        await stakingPlatform.getUserLockUpStartTime(user.address)
+      ).to.equal(blockTimestamp);
+    });
+
+    it("Test withdraw all stake", async function () {
+      // deposit
+      await token.connect(user).approve(stakingPlatform.address, depositAmount);
+      await stakingPlatform.connect(user).deposit(depositAmount);
+
+      // start staking
+      await stakingPlatform.connect(deployer).startStaking();
+
+      // simulate time passing
+      let timeToPass = lockDurationInDays * 24 * 60 * 60;
+      await ethers.provider.send("evm_increaseTime", [timeToPass]);
+      await ethers.provider.send("evm_mine");
+
+      // record balances before withdrawal
+      const initialUserBalance = await token.balanceOf(user.address);
+      const initialContractBalance = await token.balanceOf(
+        stakingPlatform.address
+      );
+      const rewardsToClaim = await stakingPlatform.rewardOf(user.address);
+
+      // withdraw all stake
+      await stakingPlatform.connect(user).withdrawAll();
+
+      // ensure user's token balance increased by the withdrawn amount
+      const finalUserBalance = await token.balanceOf(user.address);
+      expect(finalUserBalance).to.equal(
+        initialUserBalance.add(depositAmount).add(rewardsToClaim)
+      );
+
+      // ensure the contract's token balance decreased by the withdrawn amount
+      const finalContractBalance = await token.balanceOf(
+        stakingPlatform.address
+      );
+      expect(finalContractBalance).to.equal(
+        initialContractBalance.sub(depositAmount).sub(rewardsToClaim)
+      );
+
+      // check that the user's staked amount is reset to 0
+      const userStakedAmount = await stakingPlatform.amountStaked(user.address);
+      expect(userStakedAmount).to.equal(0);
+
+      // check that the user's reward is reset to 0
+      expect(await stakingPlatform.rewardOf(user.address)).to.equal(0);
+
+      // check if userLockupStartTime is set to staking
+      expect(
+        await stakingPlatform.getUserLockUpStartTime(user.address)
+      ).to.equal(ethers.constants.MaxUint256);
     });
   });
 

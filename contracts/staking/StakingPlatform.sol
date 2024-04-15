@@ -31,6 +31,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
     mapping(address => uint) public staked;
     mapping(address => uint) private _rewardsToClaim;
     mapping(address => uint) private _userStartTime;
+    mapping(address => uint) private _userLockupStartTime;
 
     /**
      * @notice constructor contains all the parameters of the staking platform
@@ -93,6 +94,17 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
         if (_userStartTime[_msgSender()] == 0) {
             _userStartTime[_msgSender()] = block.timestamp;
         }
+        if (
+            (_userLockupStartTime[_msgSender()] == 0 ||
+                _userLockupStartTime[_msgSender()] == type(uint256).max) &&
+            startPeriod != 0
+        ) {
+            // when user _userLockupStartTime[_msgSender()] 
+            // is 0 it means user is coming for the first time
+            // is type(uint256).max it means user has withdrawn all his stake before and he is coming back
+            // _userLocupStartTime is only set when staking has began 
+            _userLockupStartTime[_msgSender()] = block.timestamp;
+        }
 
         _updateRewards();
 
@@ -112,7 +124,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
      * if rewards to claim
      */
     function withdraw(uint amount) external override whenNotPaused {
-        uint startTime = _getStartTime(_msgSender());
+        uint startTime = getUserLockUpStartTime(_msgSender());
         require(
             block.timestamp > endPeriod ||
                 (block.timestamp - startTime) >= lockupDuration,
@@ -131,6 +143,10 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
         _totalStaked = _totalStaked - amount;
         staked[_msgSender()] -= amount;
         token.safeTransfer(_msgSender(), amount);
+        if (staked[_msgSender()] == 0) {
+            // user has withdrawn all his stake so reset the lockup start time
+            _userLockupStartTime[_msgSender()] = type(uint256).max;
+        }
         emit Withdraw(_msgSender(), amount);
     }
 
@@ -142,7 +158,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
      * if rewards to claim
      */
     function withdrawAll() external override whenNotPaused {
-        uint startTime = _getStartTime(_msgSender());
+        uint startTime = getUserLockUpStartTime(_msgSender());
         require(
             block.timestamp > endPeriod ||
                 (block.timestamp - startTime) >= lockupDuration,
@@ -157,8 +173,8 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
         _totalStaked = _totalStaked - staked[_msgSender()];
         uint stakedBalance = staked[_msgSender()];
         staked[_msgSender()] = 0;
+        _userLockupStartTime[_msgSender()] = type(uint256).max; // reset lockup start time
         token.safeTransfer(_msgSender(), stakedBalance);
-
         emit Withdraw(_msgSender(), stakedBalance);
     }
 
@@ -356,7 +372,22 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
     /**
      * @dev function to get startTime of the user
      */
-    function getUserStartTime(address user) external view returns (uint) {
-        return _userStartTime[user];
+    function getUserLockUpStartTime(
+        address stakeHolder
+    ) public view returns (uint) {
+        // check if user has already withdrawn all his stake before
+        if (_userLockupStartTime[stakeHolder] == type(uint256).max) {
+            return type(uint256).max;
+        }
+        bool early = startPeriod > _userLockupStartTime[stakeHolder];
+        uint startTime;
+        if (endPeriod > block.timestamp) {
+            startTime = early ? startPeriod : _userLockupStartTime[stakeHolder];
+            return startTime;
+        }
+        startTime = early
+            ? 0
+            : stakingDuration - (endPeriod - _userLockupStartTime[stakeHolder]);
+        return startTime;
     }
 }
