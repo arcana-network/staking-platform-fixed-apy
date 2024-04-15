@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.10;
+pragma solidity =0.8.23;
 
 import "./StakingPlatform.sol";
 
@@ -21,22 +21,18 @@ contract StakingPlatformTester is StakingPlatform {
     {}
 
     function setPrecision(uint precision_) public {
-        _precision = 10**precision_;
+        _precision = 10 ** precision_;
     }
 
-    function calculatedReward(address stakeHolder)
-        external
-        view
-        returns (uint)
-    {
+    function calculatedReward(
+        address stakeHolder
+    ) external view returns (uint) {
         return _calculateRewards(stakeHolder);
     }
 
-    function percentageTimeRemaining(address stakeHolder)
-        external
-        view
-        returns (uint)
-    {
+    function percentageTimeRemaining(
+        address stakeHolder
+    ) external view returns (uint) {
         return _percentageTimeRemaining(stakeHolder);
     }
 }
