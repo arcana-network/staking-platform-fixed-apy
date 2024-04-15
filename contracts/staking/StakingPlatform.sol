@@ -314,6 +314,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
         uint _maxAmountStaked
     ) external onlyOwner whenNotPaused {
         maxStakingPerUser = _maxAmountStaked;
+        emit MaxStakingPerUserUpdated(_maxAmountStaked);
     }
 
     /**
@@ -322,6 +323,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
      */
     function setStakingMax(uint _stakingMax) external onlyOwner whenNotPaused {
         stakingMax = _stakingMax;
+        emit MaxStakingUpdated(_stakingMax);
     }
 
     /**
@@ -332,6 +334,7 @@ contract StakingPlatform is IStakingPlatform, Ownable2Step, Pausable {
         uint _lockupDurationInDays
     ) external onlyOwner whenNotPaused {
         lockupDuration = _lockupDurationInDays * 1 days;
+        emit LockupDurationUpdated(lockupDuration);
     }
 
     /**

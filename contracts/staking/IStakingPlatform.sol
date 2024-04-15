@@ -93,4 +93,19 @@ interface IStakingPlatform {
      * @dev Emitted when staking has started
      */
     event StartStaking(uint startPeriod, uint lockupPeriod, uint endingPeriod);
+
+    /**
+     * @dev Emitted when max staking per user has been updated
+     */
+    event MaxStakingPerUserUpdated(uint maxAmountStaked);
+
+    /**
+     * @dev Emitted when the pool's max staking has been updated
+     */
+    event MaxStakingUpdated(uint maxStaking);
+
+    /**
+     * @dev Emitted when the lockup duration has been updated
+     */
+    event LockupDurationUpdated(uint lockupDuration);
 }
